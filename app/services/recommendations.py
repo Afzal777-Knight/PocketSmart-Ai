@@ -1,12 +1,26 @@
 from app.schemas import *
 from app.services.catalog import search
 from app.services.gemini import gemini
+from urllib.parse import quote_plus
 
+def make_search_url(platform, title):
+    query = quote_plus(title)
+
+    if platform.lower() == "amazon":
+        return f"https://www.amazon.in/s?k={query}"
+
+    if platform.lower() == "flipkart":
+        return f"https://www.flipkart.com/search?q={query}"
+    if platform.lower() == "ikea":
+        return f"https://www.ikea.com/in/en/search/?q={query}"
+    if platform.lower() == "swiggy":
+        return f"https://www.swiggy.com/search?query={query}"
+    return ""
 def normalize(planner, budget, data):
     recs=[]
     for x in (data.get("recommendations") or [])[:12]:
         try:
-            recs.append(RecommendationItem(title=str(x.get("title","Recommendation")),category=str(x.get("category","general")),platform=str(x.get("platform","")),estimated_price=float(x.get("estimated_price",0)),reason=str(x.get("reason","")),url=str(x.get("url",""))))
+            recs.append(RecommendationItem(title=str(x.get("title","Recommendation")),category=str(x.get("category","general")),platform=str(x.get("platform","")),estimated_price=float(x.get("estimated_price",0)),reason=str(x.get("reason","")),url=make_search_url(str(x.get("platform","")), str(x.get("title","Recommendation"))) or str(x.get("url",""))))
         except (TypeError, ValueError):
             pass
     total=sum(x.estimated_price for x in recs)
@@ -17,7 +31,7 @@ def home(req):
     prompt=f"""You are PocketSmart AI. Return JSON only with keys summary, allocation, recommendations. Budget INR {req.budget}. Room {req.room_type}. Style {req.style}. Requested items {[x.model_dump() for x in req.items]}. Use only these candidates: {[x.__dict__ for x in candidates]}. Keep recommendations within budget."""
     ai=gemini.generate(prompt)
     if ai: return normalize("home",req.budget,ai)
-    return RecommendationResponse(planner="home",budget=req.budget,budget_used=min(sum(x.price for x in candidates),req.budget),summary=f"Budget-friendly {req.style} plan for your {req.room_type}.",allocation={"furniture":req.budget*.45,"lighting":req.budget*.20,"decor":req.budget*.15,"reserve":req.budget*.20},recommendations=[RecommendationItem(title=x.title,category=x.category,platform=x.platform,estimated_price=x.price,reason="Selected from the local demo catalog for your budget and style.",url=x.url) for x in candidates],warning="Gemini is not configured; deterministic fallback recommendations are being used.")
+    return RecommendationResponse(planner="home",budget=req.budget,budget_used=min(sum(x.price for x in candidates),req.budget),summary=f"Budget-friendly {req.style} plan for your {req.room_type}.",allocation={"furniture":req.budget*.45,"lighting":req.budget*.20,"decor":req.budget*.15,"reserve":req.budget*.20},recommendations=[RecommendationItem(title=x.title,category=x.category,platform=x.platform,estimated_price=x.price,reason="Selected from the local demo catalog for your budget and style.",url=make_search_url(x.platform, x.title) or x.url) for x in candidates],warning="Gemini is not configured; deterministic fallback recommendations are being used.")
 
 def party(req):
     candidates=search(["catering","venue","decoration"],req.budget,[req.event_type])
