@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% set title="Dashboard" %}
+{% block content %}
+
+<main>
+    <div class="card">
+        <h1>Dashboard</h1>
+        <p id="who" class="muted">Loading...</p>
+        <button class="danger" onclick="logout()">Logout</button>
+    </div>
+
+    <section class="grid" style="margin-top:18px">
+        <div class="card">
+            <h2>Home</h2>
+            <a class="button" href="/planner/home">Plan home</a>
+        </div>
+
+        <div class="card">
+            <h2>Party</h2>
+            <a class="button" href="/planner/party">Plan party</a>
+        </div>
+
+        <div class="card">
+            <h2>Jewelry</h2>
+            <a class="button" href="/planner/jewelry">Plan jewelry</a>
+        </div>
+    </section>
+
+    <div class="card" style="margin-top:18px">
+        <h2>Activity</h2>
+        <p id="count" class="muted"></p>
+        <a href="/history-page">View history</a>
+    </div>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", async function () {
+    try {
+        const u = await api("/session-info");
+        const d = await api("/session-data");
+
+        document.getElementById("who").textContent = u.email;
+        document.getElementById("count").textContent =
+            d.recommendation_count + " recommendation plans saved.";
+    } catch (e) {
+        console.log(e);
+    }
+});
+</script>
+
+{% endblock %}
